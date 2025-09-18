@@ -460,6 +460,108 @@ async function testDownloadAllLogs() {
   }
 }
 
+// Test function để xóa log theo ngày
+async function testDeleteLog() {
+  try {
+    console.log('🗑️ Testing delete log API...');
+    
+    // Đầu tiên tạo một log để test xóa
+    const testDate = moment().subtract(1, 'days').format('YYYY-MM-DD'); // Ngày hôm qua
+    
+    console.log(`   Creating test log for date: ${testDate}`);
+    const createResponse = await axios.post(`${BASE_URL}/api/log`, {
+      message: 'Test log for deletion testing',
+      level: 'INFO',
+      component: 'DeleteTest',
+      platform: 'TestPlatform',
+      date: testDate
+    });
+    
+    if (createResponse.data.success) {
+      console.log(`   ✓ Test log created for ${testDate}`);
+      
+      // Kiểm tra log có tồn tại không
+      try {
+        await axios.get(`${BASE_URL}/api/log/${testDate}`);
+        console.log(`   ✓ Confirmed log file exists for ${testDate}`);
+      } catch (error) {
+        console.log(`   ⚠️ Log file might not exist yet for ${testDate}`);
+      }
+      
+      // Bây giờ test xóa log
+      console.log(`   Attempting to delete log for ${testDate}...`);
+      const deleteResponse = await axios.delete(`${BASE_URL}/api/log/${testDate}`);
+      
+      console.log('✅ Delete log response:');
+      console.log(`   Success: ${deleteResponse.data.success}`);
+      console.log(`   Message: ${deleteResponse.data.message}`);
+      console.log(`   Deleted file: ${deleteResponse.data.deleted_file}`);
+      console.log(`   Date: ${deleteResponse.data.date}`);
+      console.log(`   Timestamp: ${deleteResponse.data.timestamp}`);
+      
+      // Verify file đã bị xóa
+      try {
+        await axios.get(`${BASE_URL}/api/log/${testDate}`);
+        console.log('   ❌ File still exists after deletion - this is unexpected');
+      } catch (error) {
+        if (error.response?.status === 404) {
+          console.log('   ✓ Confirmed: File successfully deleted');
+        } else {
+          console.log('   ⚠️ Unexpected error when checking deleted file:', error.message);
+        }
+      }
+      
+      return deleteResponse.data;
+    } else {
+      console.log('   ❌ Failed to create test log for deletion test');
+      return null;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error testing delete log:', error.response?.data || error.message);
+    
+    // Test các error cases
+    await testDeleteLogErrorCases();
+  }
+}
+
+// Test function để test error cases của delete log API
+async function testDeleteLogErrorCases() {
+  try {
+    console.log('🔍 Testing delete log error cases...');
+    
+    // Test 1: Invalid date format
+    try {
+      await axios.delete(`${BASE_URL}/api/log/invalid-date`);
+      console.log('   ❌ Should have failed with invalid date format');
+    } catch (error) {
+      if (error.response?.status === 400 && error.response.data.error.includes('Invalid date format')) {
+        console.log('   ✓ Correctly rejected invalid date format');
+      } else {
+        console.log('   ⚠️ Unexpected error for invalid date:', error.response?.data);
+      }
+    }
+    
+    // Test 2: Non-existent file
+    const nonExistentDate = moment().subtract(365, 'days').format('YYYY-MM-DD'); // 1 năm trước
+    try {
+      await axios.delete(`${BASE_URL}/api/log/${nonExistentDate}`);
+      console.log('   ❌ Should have failed with file not found');
+    } catch (error) {
+      if (error.response?.status === 404 && error.response.data.error.includes('Không tìm thấy file log')) {
+        console.log(`   ✓ Correctly rejected non-existent file (${nonExistentDate})`);
+      } else {
+        console.log('   ⚠️ Unexpected error for non-existent file:', error.response?.data);
+      }
+    }
+    
+    console.log('✅ Delete log error cases test completed');
+    
+  } catch (error) {
+    console.error('❌ Error testing delete log error cases:', error.message);
+  }
+}
+
 // Chạy tất cả tests
 async function runAllTests() {
   console.log('🚀 Starting API tests...\n');
@@ -509,11 +611,15 @@ async function runAllTests() {
   await testDownloadAllLogs();
   console.log('\n' + '='.repeat(50) + '\n');
   
-  // Test 6: Create old logs for cleanup testing
+  // Test 6: Delete log
+  await testDeleteLog();
+  console.log('\n' + '='.repeat(50) + '\n');
+  
+  // Test 7: Create old logs for cleanup testing
   await createOldLogsForTesting();
   console.log('\n' + '='.repeat(50) + '\n');
   
-  // Test 7: Manual cleanup
+  // Test 8: Manual cleanup
   await testManualCleanup();
   
   console.log('\n🎉 All tests completed!');
@@ -563,5 +669,7 @@ module.exports = {
   testListLogs,
   testDownloadLog,
   testDownloadAllLogs,
+  testDeleteLog,
+  testDeleteLogErrorCases,
   runAllTests
 };

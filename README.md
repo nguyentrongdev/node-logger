@@ -335,6 +335,55 @@ Thực hiện cleanup manual để xóa logs cũ hơn 2 tuần.
 - Tự động log cleanup action vào file log hiện tại
 - Safe operation với error handling cho từng file
 
+### 8. Xóa File Log Theo Ngày
+**DELETE** `/api/log/:date`
+
+Xóa file log theo ngày cụ thể (format: YYYY-MM-DD).
+
+**Tính năng:**
+- Validate date format trước khi xóa
+- Kiểm tra file có tồn tại không
+- Tự động log action xóa vào file log hôm nay (nếu không phải xóa file hôm nay)
+- Error handling an toàn
+
+**Ví dụ:**
+```
+DELETE http://localhost:4005/api/log/2024-01-15
+```
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "message": "File log cho ngày 2024-01-15 đã được xóa thành công",
+  "deleted_file": "log-2024-01-15.txt",
+  "date": "2024-01-15",
+  "timestamp": "18/09/2025 11:45:20 AM"
+}
+```
+
+**Response (File không tồn tại):**
+```json
+{
+  "success": false,
+  "error": "Không tìm thấy file log cho ngày 2024-01-15"
+}
+```
+
+**Response (Date format không hợp lệ):**
+```json
+{
+  "success": false,
+  "error": "Invalid date format. Use YYYY-MM-DD"
+}
+```
+
+**⚠️ Lưu ý:**
+- **Xóa vĩnh viễn**: File log sẽ bị xóa hoàn toàn, không thể khôi phục
+- **Auto logging**: Action xóa sẽ được ghi vào log file hôm nay
+- **Safe deletion**: Chỉ xóa nếu file tồn tại và format date hợp lệ
+- **Immediate effect**: File sẽ bị xóa ngay lập tức
+
 ## Ví dụ sử dụng
 
 ### Ghi log mới:
@@ -403,6 +452,15 @@ curl -O http://localhost:4005/api/logs/download-all
 curl -X POST http://localhost:4005/api/logs/cleanup
 ```
 
+### Xóa file log theo ngày:
+```bash
+# Xóa log ngày 15/01/2024
+curl -X DELETE http://localhost:4005/api/log/2024-01-15
+
+# Ví dụ với verbose để xem response chi tiết
+curl -v -X DELETE http://localhost:4005/api/log/2024-01-15
+```
+
 ## Cấu trúc thư mục
 
 ```
@@ -436,6 +494,7 @@ node-logger/
 - **Array content**: API `/api/log/:date` trả về content dưới dạng array với `total_lines`
 - **Auto cleanup**: Cron job tự động xóa logs cũ hơn 2 tuần mỗi ngày lúc 2:00 AM
 - **Manual cleanup**: API `/api/logs/cleanup` để cleanup manual bất kỳ lúc nào
+- **Single log deletion**: API `DELETE /api/log/:date` để xóa file log theo ngày cụ thể
 - **Performance**: Logs được group theo ngày để optimize file I/O
 - Server tự động tạo thư mục `logs/` nếu chưa tồn tại
 - Date format phải là YYYY-MM-DD

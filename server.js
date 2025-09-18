@@ -540,6 +540,72 @@ app.post('/api/logs/cleanup', async (req, res) => {
   }
 });
 
+// API 8: Xóa file log theo ngày
+app.delete('/api/log/:date', async (req, res) => {
+  try {
+    const { date } = req.params;
+    
+    // Validate date format
+    if (!moment(date, 'YYYY-MM-DD', true).isValid()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid date format. Use YYYY-MM-DD'
+      });
+    }
+    
+    const logFilePath = getLogFilePath(date);
+    const fileName = getLogFileName(date);
+    
+    // Kiểm tra file có tồn tại không
+    if (!await fs.pathExists(logFilePath)) {
+      return res.status(404).json({
+        success: false,
+        error: `Không tìm thấy file log cho ngày ${date}`
+      });
+    }
+    
+    // Xóa file log
+    await fs.unlink(logFilePath);
+    
+    console.log(`🗑️ Log file deleted: ${fileName} for date ${date}`);
+    
+    // Log action vào file hôm nay (nếu không phải file hôm nay bị xóa)
+    const today = moment().format('YYYY-MM-DD');
+    if (date !== today) {
+      try {
+        const deleteLogEntry = createLogEntry(
+          `Log file deleted: ${fileName} (${date})`,
+          'INFO',
+          'LogDelete',
+          'NodeLogger'
+        );
+        
+        const todayLogPath = getLogFilePath(today);
+        await fs.appendFile(todayLogPath, deleteLogEntry);
+      } catch (logError) {
+        console.error('❌ Failed to log delete action:', logError);
+        // Không throw error vì việc xóa file đã thành công
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `File log cho ngày ${date} đã được xóa thành công`,
+      deleted_file: fileName,
+      date: date,
+      timestamp: getFormattedTimestamp()
+    });
+    
+  } catch (error) {
+    console.error('Error deleting log:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Lỗi khi xóa file log',
+      message: error.message
+    });
+  }
+});
+
 // Route gốc
 app.get('/', (req, res) => {
   res.json({
@@ -595,6 +661,14 @@ app.get('/', (req, res) => {
         method: 'POST',
         path: '/api/logs/cleanup',
         description: 'Manual cleanup logs cũ hơn 2 tuần'
+      },
+      {
+        method: 'DELETE',
+        path: '/api/log/:date',
+        description: 'Xóa file log theo ngày',
+        params: {
+          date: 'string (YYYY-MM-DD format)'
+        }
       }
     ]
   });
