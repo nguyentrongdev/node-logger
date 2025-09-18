@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  node-logger:
+    build: .
+    container_name: node-logger-app
+    ports:
+      - "4005:4005"
+    volumes:
+      # Mount thư mục logs ra host để persist data
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=production
+      - PORT=4005
+    restart: unless-stopped
+    networks:
+      - logger-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4005/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+
+networks:
+  logger-network:
+    driver: bridge
+
+volumes:
+  logs-data:
+    driver: local
