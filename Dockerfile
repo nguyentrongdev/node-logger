@@ -18,10 +18,10 @@ RUN npm ci --only=production && npm cache clean --force
 COPY . .
 
 # Tạo thư mục logs với quyền phù hợp
-RUN mkdir -p logs && chown -R node:node logs && chmod -R 755 logs
-
+# RUN mkdir -p logs && chown -R node:node logs && chmod -R 755 logs
+RUN mkdir -p logs && chmod -R 755 logs
 # Chuyển sang user node để tăng bảo mật
-USER node
+# USER node
 
 # Expose port
 EXPOSE 4005
